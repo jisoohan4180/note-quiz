@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내 노트로 시험문제 만들기</title>
+<style>
+  :root{--ink:#1c1c1c;--muted:#5a6170;--accent:#1f4f6b;--accent2:#2f7095;--line:#d7dbe2;--bg:#f4f5f7;--card:#fff;--ok:#1f7a4d;--ok-bg:#e7f5ee;--bad:#b3261e;--bad-bg:#fbeceb;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;line-height:1.5;padding:16px;}
+  .wrap{max-width:660px;margin:0 auto;}
+  .head{background:var(--accent);color:#fff;border-radius:14px 14px 0 0;padding:16px 18px;}
+  .head h1{margin:0;font-size:18px;letter-spacing:-0.3px;}
+  .head .sub{font-size:12.5px;opacity:.85;margin-top:3px;}
+  .bar{height:6px;background:rgba(255,255,255,.25);border-radius:99px;margin-top:12px;overflow:hidden;}
+  .bar>i{display:block;height:100%;width:0;background:#fff;transition:width .3s;}
+  .statusrow{display:flex;justify-content:space-between;font-size:12.5px;margin-top:8px;opacity:.92;}
+  .card{background:var(--card);border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;padding:18px;}
+  label.fld{display:block;font-size:13px;font-weight:700;color:var(--accent);margin:4px 0 5px;}
+  input.title{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:12px;}
+  textarea{width:100%;min-height:220px;padding:12px 13px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;line-height:1.5;}
+  textarea:focus,input.title:focus{outline:none;border-color:var(--accent2);}
+  .row{display:flex;gap:10px;align-items:center;margin:12px 0;}
+  .row label{font-size:13.5px;color:var(--muted);}
+  select{padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;font-family:inherit;}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.55;}
+  .btn{padding:12px;border:0;border-radius:10px;cursor:pointer;font-size:15px;font-weight:600;font-family:inherit;}
+  .btn.primary{background:var(--accent);color:#fff;width:100%;}
+  .btn.primary:disabled{background:#b9c0cd;cursor:default;}
+  .btn.ghost{background:#eceef2;color:var(--accent);}
+  .actions{margin-top:16px;display:flex;gap:10px;}
+  .actions .btn{flex:1;}
+  .loading{text-align:center;padding:34px 10px;}
+  .spinner{width:34px;height:34px;border:3.5px solid #dfe3ea;border-top-color:var(--accent);border-radius:50%;margin:0 auto 14px;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading .t{font-weight:600;}.loading .s{font-size:13px;color:var(--muted);margin-top:4px;}
+  .err{background:var(--bad-bg);border-left:4px solid var(--bad);padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:14px;}
+  .qnum{font-size:12px;font-weight:700;color:var(--accent2);letter-spacing:.5px;}
+  .qtext{font-size:16px;font-weight:600;margin:6px 0 14px;}
+  .opt{display:block;width:100%;text-align:left;cursor:pointer;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;margin:8px 0;font-size:14.5px;color:var(--ink);transition:border-color .12s,background .12s;font-family:inherit;}
+  .opt:hover{border-color:var(--accent2);}
+  .opt .mk{font-weight:700;color:var(--accent2);margin-right:7px;}
+  .opt.correct{border-color:var(--ok);background:var(--ok-bg);}
+  .opt.wrong{border-color:var(--bad);background:var(--bad-bg);}
+  .opt.correct .mk{color:var(--ok);}.opt.wrong .mk{color:var(--bad);}
+  .opt:disabled{cursor:default;}
+  .exp{margin-top:12px;padding:11px 13px;border-radius:10px;font-size:14px;display:none;}
+  .exp.show{display:block;}.exp.good{background:var(--ok-bg);border-left:4px solid var(--ok);}.exp.no{background:var(--bad-bg);border-left:4px solid var(--bad);}
+  .verdict{font-weight:700;margin-bottom:3px;}
+  .result{text-align:center;padding:10px 4px;}
+  .score{font-size:46px;font-weight:800;color:var(--accent);line-height:1.1;}
+  .score small{font-size:20px;color:var(--muted);font-weight:600;}
+  .pct{font-size:15px;color:var(--muted);margin-top:4px;}
+  .msg{font-size:16px;font-weight:600;margin:14px 0 4px;}
+  .review{text-align:left;margin-top:18px;}.review h3{font-size:14px;color:var(--bad);margin:0 0 8px;}
+  .ritem{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:8px 0;font-size:13.5px;}
+  .ritem .rq{font-weight:600;margin-bottom:5px;}.ritem .ra{color:var(--ok);font-weight:600;}
+  .allright{color:var(--ok);font-weight:600;font-size:15px;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>📝 내 노트로 시험문제 만들기</h1>
+    <div class="sub">정리 노트를 붙여넣으면 4지선다 문제를 자동 생성합니다</div>
+    <div class="bar"><i id="prog"></i></div>
+    <div class="statusrow"><span id="counter"></span><span id="scorebox"></span></div>
+  </div>
+  <div class="card" id="stage"></div>
+</div>
+<script>
+const MK=["①","②","③","④","⑤"];
+let BANK=[], notesText="", subjectTitle="", batchN=6;
+let order,qi,score,wrong;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function setBar(p){document.getElementById("prog").style.width=p+"%";}
+
+function inputScreen(){
+  setBar(0);document.getElementById("counter").textContent="";document.getElementById("scorebox").textContent="";
+  document.getElementById("stage").innerHTML=`
+    <label class="fld">과목·주제 (선택)</label>
+    <input class="title" id="subj" placeholder="예: 교육공학 5~7장" value="${subjectTitle.replace(/"/g,'&quot;')}">
+    <label class="fld">정리 노트 붙여넣기</label>
+    <textarea id="notes" placeholder="여기에 정리한 내용을 그대로 붙여넣으세요.">${notesText.replace(/</g,'&lt;')}</textarea>
+    <div class="row"><label for="cnt">한 번에 만들 문항 수</label>
+      <select id="cnt"><option>5</option><option selected>6</option><option>8</option><option>10</option></select></div>
+    <button class="btn primary" id="gen">문제 만들기 ✨</button>
+    <div class="hint">붙여넣은 내용에서 핵심 개념·순서·정의·함정을 골라 객관식으로 출제해요. 한 번 더 누르면 겹치지 않는 새 문제를 이어서 만듭니다.</div>`;
+  document.getElementById("gen").addEventListener("click",()=>{
+    notesText=document.getElementById("notes").value.trim();
+    subjectTitle=document.getElementById("subj").value.trim();
+    batchN=parseInt(document.getElementById("cnt").value);
+    if(notesText.length<20){alert("노트 내용을 조금 더 붙여넣어 주세요.");return;}
+    BANK=[];generate(false);
+  });
+}
+function loadingScreen(msg){document.getElementById("stage").innerHTML=`<div class="loading"><div class="spinner"></div><div class="t">${msg}</div><div class="s">잠시만요… 보통 5~15초 걸려요</div></div>`;}
+
+async function generate(append){
+  loadingScreen(append?"새 문제를 더 만드는 중":"노트를 분석해 문제를 만드는 중");
+  try{
+    const res=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({notes:notesText,count:batchN,asked:BANK.map(b=>b.q)})});
+    const data=await res.json();
+    if(!res.ok||data.error) throw new Error(data.error||("오류 "+res.status));
+    const parsed=data.questions;
+    if(!parsed||!parsed.length) throw new Error("문제를 만들지 못했어요. 다시 시도해 주세요.");
+    const startIdx=BANK.length;BANK=BANK.concat(parsed);
+    startQuiz(parsed.map((_,i)=>startIdx+i));
+  }catch(e){errorScreen(e.message||"문제 생성 중 오류가 발생했어요.",append);}
+}
+function errorScreen(msg,append){
+  document.getElementById("stage").innerHTML=`<div class="err">⚠️ ${msg}</div>
+    <div class="actions"><button class="btn primary" id="retry">다시 시도</button>
+    <button class="btn ghost" id="back">노트로 돌아가기</button></div>`;
+  document.getElementById("retry").addEventListener("click",()=>generate(append));
+  document.getElementById("back").addEventListener("click",inputScreen);
+}
+function startQuiz(idxPool){
+  order=idxPool.map(idx=>{const q=BANK[idx];return{q:q.q,e:q.e,opts:shuffle(q.o.map(o=>({t:o[0],correct:o[1]})))};});
+  qi=0;score=0;wrong=[];render();
+}
+function render(){
+  const total=order.length;
+  document.getElementById("counter").textContent=(qi+1)+" / "+total;
+  document.getElementById("scorebox").textContent="점수 "+score;setBar(qi/total*100);
+  const it=order[qi];
+  let h='<div class="qnum">Q'+(qi+1)+(subjectTitle?' · '+subjectTitle:'')+'</div><div class="qtext">'+it.q+'</div>';
+  it.opts.forEach((o,i)=>h+='<button class="opt" data-i="'+i+'"><span class="mk">'+MK[i]+'</span>'+o.t+'</button>');
+  h+='<div class="exp" id="exp"></div><div class="actions"><button class="btn primary" id="next" disabled>'+(qi===total-1?"결과 보기":"다음 문제")+'</button></div>';
+  document.getElementById("stage").innerHTML=h;
+  document.querySelectorAll(".opt").forEach(b=>b.addEventListener("click",()=>choose(parseInt(b.dataset.i))));
+  document.getElementById("next").addEventListener("click",()=>{qi++;(qi>=total)?finish():render();});
+}
+function choose(i){
+  const exp=document.getElementById("exp");if(exp.classList.contains("show"))return;
+  const it=order[qi];const opts=document.querySelectorAll(".opt");const ci=it.opts.findIndex(o=>o.correct);const ok=(i===ci);
+  if(ok)score++;else wrong.push(it);
+  opts.forEach((b,idx)=>{b.disabled=true;if(idx===ci)b.classList.add("correct");else if(idx===i)b.classList.add("wrong");});
+  exp.classList.add("show",ok?"good":"no");exp.innerHTML='<div class="verdict">'+(ok?"⭕ 정답!":"❌ 오답")+'</div>'+(it.e||"");
+  document.getElementById("scorebox").textContent="점수 "+score;document.getElementById("next").disabled=false;
+}
+function finish(){
+  const total=order.length,pct=Math.round(score/total*100);setBar(100);
+  document.getElementById("counter").textContent="완료";
+  let msg=pct>=90?"🎉 완벽! 그대로 가도 됩니다.":pct>=70?"👍 좋아요. 틀린 것만 다시!":pct>=50?"📌 핵심은 잡았어요. 오답 복습!":"🔥 오답부터 다시 정리하고 한 번 더!";
+  let h='<div class="result"><div class="score">'+score+'<small> / '+total+'</small></div><div class="pct">정답률 '+pct+'%</div><div class="msg">'+msg+'</div>';
+  if(wrong.length){h+='<div class="review"><h3>틀린 문제 다시 보기 ('+wrong.length+')</h3>';
+    wrong.forEach(w=>{const ca=w.opts.find(o=>o.correct).t;h+='<div class="ritem"><div class="rq">'+w.q+'</div><div class="ra">정답: '+ca+'</div><div style="color:var(--muted);margin-top:4px;">'+(w.e||"")+'</div></div>';});h+='</div>';}
+  else h+='<div class="allright">틀린 문제가 없어요! 💯</div>';
+  h+='<div class="actions"><button class="btn primary" id="more">문제 더 만들기 ✨</button></div>';
+  h+='<div class="actions"><button class="btn ghost" id="again">이 문제 다시</button>';
+  if(wrong.length)h+='<button class="btn ghost" id="retryWrong">틀린 것만</button>';h+='</div>';
+  h+='<div class="actions"><button class="btn ghost" id="newNotes">다른 노트로</button></div></div>';
+  document.getElementById("stage").innerHTML=h;
+  document.getElementById("more").addEventListener("click",()=>generate(true));
+  document.getElementById("again").addEventListener("click",()=>startQuiz(shuffle(order.map(o=>BANK.findIndex(b=>b.q===o.q)))));
+  const rw=document.getElementById("retryWrong");if(rw)rw.addEventListener("click",()=>startQuiz(shuffle(wrong.map(w=>BANK.findIndex(b=>b.q===w.q)))));
+  document.getElementById("newNotes").addEventListener("click",inputScreen);
+}
+inputScreen();
+</script>
+</body>
+</html>
