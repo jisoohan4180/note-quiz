@@ -73,6 +73,7 @@
 const MK=["①","②","③","④","⑤"];
 let BANK=[], notesText="", subjectTitle="";
 let order,qi,score,wrong;
+let questionCount=30;
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function setBar(p){document.getElementById("prog").style.width=p+"%";}
@@ -126,12 +127,25 @@ function inputScreen(){
     <input class="title" id="subj" placeholder="예: 교육공학 5~7장" value="${esc(subjectTitle)}">
     <label class="fld">정리 노트 붙여넣기</label>
     <textarea id="notes" placeholder="여기에 정리한 내용을 그대로 붙여넣으세요.">${notesText.replace(/</g,'&lt;')}</textarea>
+    <label class="fld" style="margin-top:12px;">문제 수</label>
+    <div class="row" style="margin:0 0 12px;gap:8px;flex-wrap:wrap;">
+      <input type="number" id="qcount" min="3" max="50" value="${questionCount||30}" style="width:80px;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;font-family:inherit;">
+      <label style="font-size:13.5px;color:var(--muted);">개 (3~50)</label>
+      <label style="margin-left:8px;font-size:13.5px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;">
+        <input type="checkbox" id="allmode" ${questionCount===0?'checked':''} style="width:15px;height:15px;"> 전체 출제 (개수 제한 없음)
+      </label>
+    </div>
     <button class="btn primary" id="gen">문제 만들기 ✨</button>
     <div class="hint">붙여넣은 내용에서 핵심 개념·순서·정의·함정을 골고루 출제해요. 한 번 더 누르면 겹치지 않는 새 문제를 이어서 만듭니다.</div>`;
+  document.getElementById("allmode").addEventListener("change",e=>{
+    document.getElementById("qcount").disabled=e.target.checked;
+  });
   document.getElementById("gen").addEventListener("click",()=>{
     notesText=document.getElementById("notes").value.trim();
     subjectTitle=document.getElementById("subj").value.trim();
     if(notesText.length<20){alert("노트 내용을 조금 더 붙여넣어 주세요.");return;}
+    const allMode=document.getElementById("allmode").checked;
+    questionCount=allMode?0:Math.min(Math.max(parseInt(document.getElementById("qcount").value)||30,3),50);
     BANK=[];generate(false);
   });
 }
@@ -141,7 +155,7 @@ async function generate(append){
   loadingScreen(append?"새 문제를 더 만드는 중":"노트를 분석해 문제를 만드는 중");
   try{
     const res=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({notes:notesText,count:append?15:30,asked:BANK.map(b=>b.q)})});
+      body:JSON.stringify({notes:notesText,count:append?(questionCount===0?0:Math.min(15,questionCount)):questionCount,asked:BANK.map(b=>b.q)})});
     const data=await res.json();
     if(!res.ok||data.error) throw new Error(data.error||("오류 "+res.status));
     const parsed=data.questions;
