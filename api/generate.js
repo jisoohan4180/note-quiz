@@ -7,6 +7,7 @@ module.exports = async (req, res) => {
     res.status(405).json({ error: "POST 요청만 허용됩니다." });
     return;
   }
+  
 
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) {
