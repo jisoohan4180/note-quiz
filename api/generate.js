@@ -20,7 +20,9 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
     const notes = (body && body.notes) || "";
-    const count = Math.min(Math.max(parseInt((body && body.count) || 6, 10) || 6, 3), 12);
+    const rawCount = parseInt((body && body.count) || 6, 10) || 6;
+    const allMode = rawCount === 0;
+    const count = allMode ? 0 : Math.min(Math.max(rawCount, 3), 50);
     const asked = (body && body.asked) || [];
 
     if (!notes || notes.trim().length < 20) {
@@ -29,8 +31,11 @@ module.exports = async (req, res) => {
     }
 
     const askedList = (asked || []).slice(0, 40).map(q => "- " + q).join("\n");
+    const countInstruction = allMode
+      ? "노트에서 출제 가능한 핵심 개념·순서·정의·함정 포인트를 빠짐없이 뽑아 최대한 많은 문제를 만드세요 (개수 제한 없음)."
+      : `한국어 4지선다 객관식 문제 ${count}개를 만드세요.`;
     const prompt =
-`당신은 한국 방송통신대학교 시험 출제위원입니다. 아래 [학습 노트]를 바탕으로 한국어 4지선다 객관식 문제 ${count}개를 만드세요.
+`당신은 한국 방송통신대학교 시험 출제위원입니다. 아래 [학습 노트]를 바탕으로 ${countInstruction}
 규칙:
 - 노트의 핵심 개념, 순서, 정의, 함정 포인트를 골고루 출제
 - 각 문제는 보기 4개, 정답은 정확히 1개
@@ -41,7 +46,7 @@ module.exports = async (req, res) => {
 [{"q":"문제 내용","o":[["보기A",false],["정답 보기",true],["보기C",false],["보기D",false]],"e":"한 줄 해설"}]
 ${askedList ? ("\n[이미 출제한 문제 — 절대 중복 금지]\n" + askedList + "\n") : ""}
 [학습 노트]
-${notes.slice(0, 8000)}`;
+${notes.slice(0, 12000)}`;
 
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -53,7 +58,7 @@ ${notes.slice(0, 8000)}`;
       body: JSON.stringify({
         // 기본: 가장 저렴·빠른 모델. 더 똑똑하게 하려면 "claude-sonnet-4-6" 로 변경.
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 3000,
+        max_tokens: allMode ? 8192 : Math.min(8192, Math.max(4000, count * 300)),
         messages: [{ role: "user", content: prompt }]
       })
     });

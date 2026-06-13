@@ -28,6 +28,7 @@
   .btn.primary{background:var(--accent);color:#fff;width:100%;}
   .btn.primary:disabled{background:#b9c0cd;cursor:default;}
   .btn.ghost{background:#eceef2;color:var(--accent);}
+  .btn.pdf{background:#1f7a4d;color:#fff;width:100%;}
   .actions{margin-top:16px;display:flex;gap:10px;}
   .actions .btn{flex:1;}
   .loading{text-align:center;padding:34px 10px;}
@@ -70,26 +71,66 @@
 </div>
 <script>
 const MK=["①","②","③","④","⑤"];
-let BANK=[], notesText="", subjectTitle="", batchN=6;
+let BANK=[], notesText="", subjectTitle="";
 let order,qi,score,wrong;
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function setBar(p){document.getElementById("prog").style.width=p+"%";}
+
+function exportPDF(){
+  if(!BANK.length){alert("문제가 없어요. 먼저 문제를 만들어 주세요.");return;}
+  const title=subjectTitle||"시험 문제";
+  const today=new Date().toLocaleDateString("ko-KR");
+  let html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${esc(title)}</title><style>
+    body{font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;max-width:740px;margin:0 auto;padding:28px 24px;color:#1c1c1c;line-height:1.7;font-size:14px;}
+    .doc-title{font-size:20px;font-weight:800;color:#1f4f6b;border-bottom:2.5px solid #1f4f6b;padding-bottom:8px;margin-bottom:4px;}
+    .doc-meta{font-size:12px;color:#5a6170;margin-bottom:28px;}
+    .question{margin-bottom:28px;page-break-inside:avoid;}
+    .qnum{font-size:11.5px;font-weight:700;color:#2f7095;letter-spacing:.4px;margin-bottom:3px;}
+    .qtext{font-size:15px;font-weight:600;margin-bottom:10px;}
+    .opts{margin:0;padding:0;list-style:none;}
+    .opts li{padding:3px 0;font-size:14px;}
+    .opts li.ans{font-weight:700;color:#1f7a4d;}
+    .ans-mark{margin-right:3px;}
+    .exp{margin-top:8px;font-size:13px;color:#444;background:#f0f7f3;border-left:3px solid #1f7a4d;padding:7px 11px;border-radius:5px;}
+    .exp-label{font-weight:700;color:#1f7a4d;margin-right:4px;}
+    .divider{border:none;border-top:1px solid #d7dbe2;margin:8px 0 24px;}
+    @media print{body{padding:0;}@page{margin:20mm;}}
+  </style></head><body>`;
+  html+=`<div class="doc-title">${esc(title)}</div><div class="doc-meta">총 ${BANK.length}문제 · 생성일 ${today}</div>`;
+  BANK.forEach((q,i)=>{
+    const ansIdx=q.o.findIndex(o=>o[1]);
+    html+=`<div class="question"><div class="qnum">Q${i+1}</div><div class="qtext">${esc(q.q)}</div><ul class="opts">`;
+    q.o.forEach((o,j)=>{
+      const isAns=o[1];
+      html+=`<li${isAns?' class="ans"':''}><span class="ans-mark">${MK[j]}</span>${esc(o[0])}${isAns?' ✓':''}</li>`;
+    });
+    html+='</ul>';
+    if(q.e) html+=`<div class="exp"><span class="exp-label">해설</span>${esc(q.e)}</div>`;
+    html+='</div>';
+    if(i<BANK.length-1) html+='<hr class="divider">';
+  });
+  html+='</body></html>';
+  const w=window.open('','_blank');
+  if(!w){alert("팝업이 차단됐어요. 이 사이트의 팝업을 허용해 주세요.");return;}
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(),400);
+}
 
 function inputScreen(){
   setBar(0);document.getElementById("counter").textContent="";document.getElementById("scorebox").textContent="";
   document.getElementById("stage").innerHTML=`
     <label class="fld">과목·주제 (선택)</label>
-    <input class="title" id="subj" placeholder="예: 교육공학 5~7장" value="${subjectTitle.replace(/"/g,'&quot;')}">
+    <input class="title" id="subj" placeholder="예: 교육공학 5~7장" value="${esc(subjectTitle)}">
     <label class="fld">정리 노트 붙여넣기</label>
     <textarea id="notes" placeholder="여기에 정리한 내용을 그대로 붙여넣으세요.">${notesText.replace(/</g,'&lt;')}</textarea>
-    <div class="row"><label for="cnt">한 번에 만들 문항 수</label>
-      <select id="cnt"><option>5</option><option selected>6</option><option>8</option><option>10</option></select></div>
     <button class="btn primary" id="gen">문제 만들기 ✨</button>
-    <div class="hint">붙여넣은 내용에서 핵심 개념·순서·정의·함정을 골라 객관식으로 출제해요. 한 번 더 누르면 겹치지 않는 새 문제를 이어서 만듭니다.</div>`;
+    <div class="hint">붙여넣은 내용에서 핵심 개념·순서·정의·함정을 골고루 출제해요. 한 번 더 누르면 겹치지 않는 새 문제를 이어서 만듭니다.</div>`;
   document.getElementById("gen").addEventListener("click",()=>{
     notesText=document.getElementById("notes").value.trim();
     subjectTitle=document.getElementById("subj").value.trim();
-    batchN=parseInt(document.getElementById("cnt").value);
     if(notesText.length<20){alert("노트 내용을 조금 더 붙여넣어 주세요.");return;}
     BANK=[];generate(false);
   });
@@ -100,12 +141,16 @@ async function generate(append){
   loadingScreen(append?"새 문제를 더 만드는 중":"노트를 분석해 문제를 만드는 중");
   try{
     const res=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({notes:notesText,count:batchN,asked:BANK.map(b=>b.q)})});
+      body:JSON.stringify({notes:notesText,count:append?15:30,asked:BANK.map(b=>b.q)})});
     const data=await res.json();
     if(!res.ok||data.error) throw new Error(data.error||("오류 "+res.status));
     const parsed=data.questions;
     if(!parsed||!parsed.length) throw new Error("문제를 만들지 못했어요. 다시 시도해 주세요.");
     const startIdx=BANK.length;BANK=BANK.concat(parsed);
+    const msg=append
+      ?`${parsed.length}개 문제가 추가됐어요 (총 ${BANK.length}개).\n지금 풀기 시작할까요?`
+      :`${parsed.length}개 문제가 만들어졌어요!\n지금 풀기 시작할까요?`;
+    if(!confirm(msg)){inputScreen();return;}
     startQuiz(parsed.map((_,i)=>startIdx+i));
   }catch(e){errorScreen(e.message||"문제 생성 중 오류가 발생했어요.",append);}
 }
@@ -148,11 +193,13 @@ function finish(){
   if(wrong.length){h+='<div class="review"><h3>틀린 문제 다시 보기 ('+wrong.length+')</h3>';
     wrong.forEach(w=>{const ca=w.opts.find(o=>o.correct).t;h+='<div class="ritem"><div class="rq">'+w.q+'</div><div class="ra">정답: '+ca+'</div><div style="color:var(--muted);margin-top:4px;">'+(w.e||"")+'</div></div>';});h+='</div>';}
   else h+='<div class="allright">틀린 문제가 없어요! 💯</div>';
+  h+='<div class="actions"><button class="btn pdf" id="pdfBtn">PDF로 내보내기 📄</button></div>';
   h+='<div class="actions"><button class="btn primary" id="more">문제 더 만들기 ✨</button></div>';
   h+='<div class="actions"><button class="btn ghost" id="again">이 문제 다시</button>';
   if(wrong.length)h+='<button class="btn ghost" id="retryWrong">틀린 것만</button>';h+='</div>';
   h+='<div class="actions"><button class="btn ghost" id="newNotes">다른 노트로</button></div></div>';
   document.getElementById("stage").innerHTML=h;
+  document.getElementById("pdfBtn").addEventListener("click",exportPDF);
   document.getElementById("more").addEventListener("click",()=>generate(true));
   document.getElementById("again").addEventListener("click",()=>startQuiz(shuffle(order.map(o=>BANK.findIndex(b=>b.q===o.q)))));
   const rw=document.getElementById("retryWrong");if(rw)rw.addEventListener("click",()=>startQuiz(shuffle(wrong.map(w=>BANK.findIndex(b=>b.q===w.q)))));
